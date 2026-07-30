@@ -8,4 +8,6 @@ test-results/
 # 集成测试在 tests/fixtures 下生成的识别产物（保留 sample.pdf 夹具）
 tests/fixtures/*.txt
 tests/fixtures/*.pdf
+tests/fixtures/*.tsv
+tests/**/fixtures/*_out.*
 !tests/fixtures/sample.pdf

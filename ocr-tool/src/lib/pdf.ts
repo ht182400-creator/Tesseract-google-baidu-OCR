@@ -5,14 +5,22 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 /**
+ * PDF 栅格化渲染 DPI：Tesseract 对 300 DPI 左右的扫描件识别率最佳，
+ * 而 PDF 内部坐标基准为 72 DPI，故渲染缩放 = 目标 DPI / 72 ≈ 4.17。
+ * 相比默认的 scale=2（≈144 DPI），文字边缘更清晰，识别率明显提升。
+ */
+export const PDF_RENDER_DPI = 300;
+export const PDF_RENDER_SCALE = PDF_RENDER_DPI / 72;
+
+/**
  * 将 PDF 文件的每一页栅格化为 PNG dataURL（在浏览器内完成，零原生依赖）。
  * @param file     用户拖入的 PDF
- * @param scale    渲染缩放（默认 2，兼顾清晰度与体积）
+ * @param scale    渲染缩放（默认 PDF_RENDER_SCALE，对应 300 DPI，提升识别率）
  * @param onProgress 每渲染完一页回调页码，便于 UI 显示进度
  */
 export async function pdfToPngDataUrls(
   file: File,
-  scale = 2,
+  scale: number = PDF_RENDER_SCALE,
   onProgress?: (page: number, total: number) => void
 ): Promise<string[]> {
   const data = await file.arrayBuffer();

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from './store';
 import { fetchHealth } from './lib/api';
 import { Dropzone } from './components/Dropzone';
@@ -13,6 +13,10 @@ export default function App() {
   const health = useStore((s) => s.health);
   const globalError = useStore((s) => s.globalError);
   const setGlobalError = useStore((s) => s.setGlobalError);
+  const files = useStore((s) => s.files);
+  const selectedId = useStore((s) => s.selectedId);
+  const [selectedPage, setSelectedPage] = useState(0);
+  const file = files.find((f) => f.id === selectedId) ?? null;
 
   useEffect(() => {
     (async () => {
@@ -49,13 +53,13 @@ export default function App() {
         </div>
         <div className="col">
           <h3>预览</h3>
-          <Preview />
+          <Preview file={file} page={selectedPage} />
         </div>
         <div className="col">
           <h3>配置</h3>
           <ConfigPanel />
           <h3 style={{ marginTop: 18 }}>识别结果</h3>
-          <ResultPanel />
+          <ResultPanel file={file} page={selectedPage} onPage={setSelectedPage} />
         </div>
       </div>
     </div>

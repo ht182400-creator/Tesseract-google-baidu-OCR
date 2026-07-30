@@ -134,3 +134,46 @@ select { width: 100%; }
 .err-box { color: var(--err); font-size: 13px; background: rgba(239,68,68,0.1); padding: 10px; border-radius: 8px; }
 .global-err { padding: 8px 20px; background: rgba(239,68,68,0.15); color: var(--err); font-size: 13px; }
 .toolbar-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* 预览：图片舞台（tight 包裹 img，作为包围盒叠加定位基准） */
+.preview-stage { position: relative; display: inline-block; line-height: 0; }
+.preview-img { max-width: 100%; max-height: 70vh; display: block; border-radius: 6px; }
+
+/* 文本行包围盒叠加层（序号与结果区卡片对应） */
+.loc-overlay { position: absolute; inset: 0; pointer-events: none; }
+.loc-box {
+  position: absolute; border: 1px solid rgba(56, 189, 248, 0.9);
+  background: rgba(56, 189, 248, 0.12); border-radius: 2px;
+}
+.loc-box-idx {
+  position: absolute; top: -2px; left: -2px; background: var(--accent-2); color: #04222f;
+  font-size: 10px; line-height: 1; padding: 1px 3px; border-radius: 3px; font-weight: 700;
+}
+
+/* 配置：文本输入与提示 */
+.text-input {
+  width: 100%; background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px;
+}
+.hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* 结果：视图切换标签 */
+.result-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tab {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+}
+.tab.on { background: var(--accent-2); color: #04222f; font-weight: 600; border-color: var(--accent); }
+
+/* 结果：位置对应列表（原图裁剪块 + 识别文本） */
+.loc-list { display: flex; flex-direction: column; gap: 10px; max-height: 62vh; overflow-y: auto; }
+.loc-card {
+  display: flex; gap: 10px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px; align-items: flex-start;
+}
+.loc-idx { font-size: 12px; font-weight: 700; color: var(--accent); min-width: 18px; text-align: center; padding-top: 2px; }
+.loc-thumb-wrap { flex: 0 0 auto; background: #000; border-radius: 4px; overflow: hidden; }
+.loc-thumb { display: block; max-width: 240px; height: auto; }
+.loc-text { flex: 1; min-width: 0; }
+.loc-text-body { font-size: 13px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+.loc-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }

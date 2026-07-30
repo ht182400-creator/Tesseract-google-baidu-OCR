@@ -1,15 +1,18 @@
 import { create } from 'zustand';
 import type { FileItem, OcrParams } from './types';
 import { pdfToPngDataUrls } from './lib/pdf';
+import { preprocessBlob, preprocessDataUrls } from './lib/preprocess';
 import { postOcr } from './lib/api';
 
-/** 默认识别参数 */
+/** 默认识别参数（whitelist 空=不限制；preprocess=none=原图直传） */
 const DEFAULT_PARAMS: OcrParams = {
   languages: ['eng'],
   oem: 1,
   psm: 6,
   preserveSpaces: false,
   outputFormat: 'txt',
+  whitelist: '',
+  preprocess: 'none',
 };
 
 /** 原始 File 引用（不进状态，便于 PDF/图片还原与上传） */
@@ -65,8 +68,8 @@ export const useStore = create<OcrStore>((set, get) => ({
       const id = nextId();
       origFiles.set(id, file);
       if (isPdf) {
-        newItems.push({ id, name: file.name, kind: 'pdf', previews: [], status: 'idle', pagesText: [] });
-        pdfToPngDataUrls(file, 2)
+        newItems.push({ id, name: file.name, kind: 'pdf', previews: [], status: 'idle', pagesText: [], pagesBlocks: [] });
+        pdfToPngDataUrls(file)
           .then((urls) =>
             set((s) => ({ files: s.files.map((f) => (f.id === id ? { ...f, previews: urls } : f)) }))
           )
@@ -79,7 +82,7 @@ export const useStore = create<OcrStore>((set, get) => ({
           );
       } else {
         const url = URL.createObjectURL(file);
-        newItems.push({ id, name: file.name, kind: 'image', previews: [url], status: 'idle', pagesText: [] });
+        newItems.push({ id, name: file.name, kind: 'image', previews: [url], status: 'idle', pagesText: [], pagesBlocks: [] });
       }
     }
     set((s) => ({ files: [...s.files, ...newItems], selectedId: newItems[0]?.id ?? s.selectedId }));
@@ -111,19 +114,32 @@ export const useStore = create<OcrStore>((set, get) => ({
       const orig = origFiles.get(id);
       if (!orig) throw new Error('原始文件丢失，请重新添加');
 
+      const mode = get().params.preprocess;
       let imageBlobs: Blob[];
+      let newPreviews: string[] | undefined;
       if (item.kind === 'pdf') {
-        // PDF 已在前端栅格化为多张 PNG dataURL，这里还原为 Blob 逐页上传
-        imageBlobs = await Promise.all(item.previews.map((u) => fetch(u).then((r) => r.blob())));
+        // PDF 已在前端栅格化为多张 PNG dataURL；按预处理模式转换并回写预览（保证包围盒与显示一致）
+        const processed = await preprocessDataUrls(item.previews, mode);
+        imageBlobs = processed.blobs;
+        newPreviews = processed.dataUrls;
       } else {
-        imageBlobs = [orig];
+        const processed = await preprocessBlob(orig, mode);
+        imageBlobs = [processed.blob];
+        newPreviews = [processed.dataUrl];
       }
 
       const res = await postOcr(imageBlobs, get().params, controller.signal);
       set((s) => ({
         files: s.files.map((f) =>
           f.id === id
-            ? { ...f, status: 'done', pagesText: res.pages.map((p) => p.text), pdfUrl: res.pages[0]?.pdfUrl }
+            ? {
+                ...f,
+                status: 'done',
+                previews: newPreviews ?? f.previews,
+                pagesText: res.pages.map((p) => p.text),
+                pagesBlocks: res.pages.map((p) => p.blocks ?? []),
+                pdfUrl: res.pages[0]?.pdfUrl,
+              }
             : f
         ),
       }));

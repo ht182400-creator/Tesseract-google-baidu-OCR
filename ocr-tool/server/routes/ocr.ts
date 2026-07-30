@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import multer from 'multer';
 import { loadConfig, listLanguages } from '../configService.js';
-import { ocrImage, detectVersion } from '../ocrService.js';
+import { ocrImage, detectVersion, sanitizeWhitelist } from '../ocrService.js';
 import {
   validateUpload,
   ensureTaskDir,
@@ -23,12 +23,23 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { files: 100 } 
 function parseParams(raw: unknown): OcrParams {
   const obj = typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, unknown>);
   const languages = Array.isArray(obj.languages) ? (obj.languages as string[]) : [];
+  // 白名单：可选字符串，经 sanitizeWhitelist 校验（空/未传表示不限制）
+  let whitelist: string | undefined;
+  if (typeof obj.whitelist === 'string' && obj.whitelist.trim() !== '') {
+    try {
+      const wl = sanitizeWhitelist(obj.whitelist);
+      if (wl !== '') whitelist = wl;
+    } catch {
+      throw new Error('whitelist 校验失败（仅支持字母数字与 Unicode 文字）');
+    }
+  }
   return {
     languages,
     oem: Number(obj.oem ?? 1),
     psm: Number(obj.psm ?? 6),
     preserveSpaces: Boolean(obj.preserveSpaces ?? false),
     outputFormat: obj.outputFormat === 'pdf' ? 'pdf' : 'txt',
+    whitelist,
   };
 }
 
