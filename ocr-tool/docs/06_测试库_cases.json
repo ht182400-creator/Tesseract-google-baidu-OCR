@@ -1,0 +1,44 @@
+{
+  "project": "ocr-tool",
+  "generatedAt": "2026-07-30",
+  "strategy": {
+    "unit": "纯函数/参数拼装/校验，无外部依赖，Vitest 运行",
+    "integration": "真实调用 .sw/out/154291 的 tesseract.exe + phototest.tif",
+    "e2e": "Playwright 真实 Chromium，覆盖图片/PDF/非法格式全链路"
+  },
+  "run": {
+    "unit_integration": "npm test",
+    "e2e": "npm run test:e2e",
+    "all_with_log": "scripts/test-all.bat",
+    "typecheck": "npm run typecheck",
+    "smoke_http": "npm run smoke"
+  },
+  "cases": [
+    { "id": "U-01", "module": "ocrService.sanitizeLang", "type": "unit", "title": "合法语言代码原样返回", "precondition": "无", "input": "\"eng\" / \"chi_sim\"", "expected": "返回原字符串", "actual": "返回原字符串", "status": "PASS" },
+    { "id": "U-02", "module": "ocrService.sanitizeLang", "type": "unit", "title": "注入字符被清洗", "precondition": "无", "input": "\"eng;rm -rf /\"", "expected": "仅保留 [A-Za-z0-9_]，得到 \"engrmrf\"", "actual": "得到 \"engrmrf\"", "status": "PASS" },
+    { "id": "U-03", "module": "ocrService.buildArgs", "type": "unit", "title": "最小参数包含必要项", "precondition": "params={languages:[\"eng\"],oem:1,psm:6,preserveSpaces:false}", "input": "buildArgs(...)", "expected": "args 含 \"eng\",\"--oem\",\"1\",\"--psm\",\"6\",输入路径,无扩展输出路径", "actual": "符合预期", "status": "PASS" },
+    { "id": "U-04", "module": "ocrService.buildArgs", "type": "unit", "title": "多语言以 + 连接", "precondition": "languages=[\"eng\",\"chi_sim\"]", "input": "buildArgs(...)", "expected": "args 含 \"eng+chi_sim\"", "actual": "符合预期", "status": "PASS" },
+    { "id": "U-05", "module": "ocrService.buildArgs", "type": "unit", "title": "保留空格追加 -c", "precondition": "preserveSpaces=true", "input": "buildArgs(...)", "expected": "args 含 \"-c\",\"preserve_interword_spaces=1\"", "actual": "符合预期", "status": "PASS" },
+    { "id": "U-06", "module": "ocrService.buildArgs", "type": "unit", "title": "输出 PDF 末参为 pdf", "precondition": "outputFormat=\"pdf\"", "input": "buildArgs(...)", "expected": "args 末位为 \"pdf\"", "actual": "符合预期", "status": "PASS" },
+    { "id": "U-07", "module": "ocrService.buildArgs", "type": "unit", "title": "空语言抛错", "precondition": "languages=[]", "input": "buildArgs(...)", "expected": "抛出 \"至少选择一种语言\"", "actual": "抛出预期错误", "status": "PASS" },
+    { "id": "U-08", "module": "ocrService.buildArgs", "type": "unit", "title": "非法 oem/psm 抛错", "precondition": "oem=99 / psm=99", "input": "buildArgs(...)", "expected": "抛出 \"oem/psm 超出范围\"", "actual": "抛出预期错误", "status": "PASS" },
+    { "id": "U-09", "module": "ocrService.buildArgs", "type": "unit", "title": "注入语言清洗后 buildArgs 不抛错", "precondition": "languages=[\"eng;rm -rf /\"]", "input": "buildArgs(...)", "expected": "清洗为 \"engrmrf\" 后正常拼参，不抛错（验证防注入）", "actual": "清洗后正常拼参，未抛错", "status": "PASS" },
+
+    { "id": "F-01", "module": "fileService.validateUpload", "type": "unit", "title": "正常 png 通过", "precondition": "无", "input": "name=\"a.png\", size=100", "expected": "返回扩展名 \".png\"", "actual": "返回 \".png\"", "status": "PASS" },
+    { "id": "F-02", "module": "fileService.validateUpload", "type": "unit", "title": "tif 格式允许", "precondition": "无", "input": "name=\"a.tif\", size=100", "expected": "返回 \".tif\"", "actual": "返回 \".tif\"", "status": "PASS" },
+    { "id": "F-03", "module": "fileService.validateUpload", "type": "unit", "title": "0 字节文件拒绝", "precondition": "无", "input": "size=0", "expected": "抛出 \"文件不能为空\"", "actual": "抛出预期错误", "status": "PASS" },
+    { "id": "F-04", "module": "fileService.validateUpload", "type": "unit", "title": "不支持格式拒绝", "precondition": "无", "input": "name=\"a.xyz\"", "expected": "抛出 \"不支持的文件格式\"", "actual": "抛出预期错误", "status": "PASS" },
+    { "id": "F-05", "module": "fileService.validateUpload", "type": "unit", "title": "超大文件拒绝", "precondition": "MAX_UPLOAD_BYTES 已设", "input": "size=MAX+1", "expected": "抛出 \"文件过大\"", "actual": "抛出预期错误", "status": "PASS" },
+
+    { "id": "I-01", "module": "ocrService.detectVersion", "type": "integration", "title": "版本探测可用", "precondition": "tesseractPath 指向真实 exe", "input": "detectVersion(config)", "expected": "返回非空且包含 \"tesseract\"", "actual": "返回含 \"tesseract\" 的版本串", "status": "PASS" },
+    { "id": "I-02", "module": "ocrService.ocrImage", "type": "integration", "title": "识别 phototest.tif", "precondition": "tessdataUnittest 含 eng 包", "input": "ocrImage(phototest.tif, out, REAL, PARAMS)", "expected": "combined 非空且含 \"This is a lot of 12 point text\"", "actual": "返回正确英文文本（约 286 字符）", "status": "PASS" },
+    { "id": "I-03", "module": "ocrService.ocrImage", "type": "integration", "title": "错误 tessdataDir 抛错", "precondition": "目录不存在", "input": "ocrImage(..., {tessdataDir:'x'})", "expected": "抛出 \"语言包目录不存在\"", "actual": "抛出预期错误", "status": "PASS" },
+    { "id": "I-04", "module": "ocrService.ocrImage", "type": "integration", "title": "错误 tesseractPath 抛错", "precondition": "exe 不存在", "input": "ocrImage(..., {tesseractPath:'C:\\\\no\\\\such\\\\tesseract.exe'})", "expected": "抛出 \"找不到 Tesseract 程序\"", "actual": "抛出预期错误", "status": "PASS" },
+    { "id": "I-05", "module": "ocrService.ocrImage", "type": "integration", "title": "取消：中止信号杀掉子进程", "precondition": "真实 tesseract 可启动", "input": "AbortController.abort() 立即触发", "expected": "Promise 以 OcrAbortError 拒绝", "actual": "以 OcrAbortError 拒绝", "status": "PASS" },
+
+    { "id": "E-01", "module": "E2E 图片识别", "type": "e2e", "title": "拖入图片得到非空文本", "precondition": "dev server 启动，tesseract 可用", "input": "拖 phototest.tif → 点「识别全部」", "expected": ".result-text 可见且长度>30", "actual": "识别成功，文本可见", "status": "PASS" },
+    { "id": "E-02", "module": "E2E PDF 识别", "type": "e2e", "title": "拖入 PDF 得到分页结果", "precondition": "dev server 启动", "input": "拖 sample.pdf → 点「识别全部」", "expected": "生成分页标签且结果非空", "actual": "多页识别成功", "status": "PASS" },
+    { "id": "E-03", "module": "E2E 非法格式", "type": "e2e", "title": "拖入不支持格式显示红色拒绝", "precondition": "dev server 启动", "input": "拖 unsupported.xyz", "expected": "出现红色错误提示且不被静默丢弃", "actual": "onDropRejected 提示正确显示", "status": "PASS" }
+  ],
+  "summary": { "total": 22, "pass": 22, "fail": 0, "byType": { "unit": 14, "integration": 5, "e2e": 3 } }
+}

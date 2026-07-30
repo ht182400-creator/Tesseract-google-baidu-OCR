@@ -1,0 +1,11 @@
+node_modules/
+dist/
+ocr-tool.config.json
+playwright-report/
+test-results/
+*.log
+.DS_Store
+# 集成测试在 tests/fixtures 下生成的识别产物（保留 sample.pdf 夹具）
+tests/fixtures/*.txt
+tests/fixtures/*.pdf
+!tests/fixtures/sample.pdf

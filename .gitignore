@@ -119,3 +119,12 @@ times.txt
 # CodeQL and build artifacts
 _codeql_detected_source_root
 install-sh
+
+# 上传到 GitHub 时排除的大文件 / 依赖 / 测试数据 / 内部目录
+# （tessdata_* / .sw / *.exe / *.dll / *.traineddata 已在上方忽略）
+test/
+unittest/
+tmp/
+.codebuddy/
+node_modules/
+ocr-tool/tmp/

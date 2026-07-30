@@ -1,0 +1,118 @@
+import { useStore } from '../store';
+
+const OEM_OPTIONS = [
+  { value: 1, label: '1 - 仅 LSTM（推荐）' },
+  { value: 0, label: '0 - 传统引擎' },
+  { value: 2, label: '2 - LSTM + 传统' },
+  { value: 3, label: '3 - 默认' },
+];
+
+const PSM_OPTIONS = [
+  { value: 3, label: '3 - 全自动（默认）' },
+  { value: 6, label: '6 - 整页统一块' },
+  { value: 4, label: '4 - 单列可变大小' },
+  { value: 11, label: '11 - 稀疏文本/无版面' },
+  { value: 12, label: '12 - 稀疏文本+方向' },
+];
+
+/**
+ * 配置面板：语言多选、oem/psm、保留空格、输出格式，以及「识别全部」按钮。
+ */
+export function ConfigPanel() {
+  const params = useStore((s) => s.params);
+  const setParams = useStore((s) => s.setParams);
+  const languages = useStore((s) => s.languages);
+  const runAll = useStore((s) => s.runAll);
+  const cancelAll = useStore((s) => s.cancelAll);
+  const files = useStore((s) => s.files);
+  const pending = files.some((f) => f.status === 'processing');
+
+  const toggleLang = (code: string) => {
+    const has = params.languages.includes(code);
+    setParams({
+      languages: has ? params.languages.filter((c) => c !== code) : [...params.languages, code],
+    });
+  };
+
+  return (
+    <div>
+      <div className="config-row">
+        <label>语言（可多选）</label>
+        <div className="lang-grid">
+          {languages.length === 0 && <span className="empty-hint">加载语言列表中…</span>}
+          {languages.map((code) => (
+            <span
+              key={code}
+              className={`lang-chip${params.languages.includes(code) ? ' on' : ''}`}
+              onClick={() => toggleLang(code)}
+            >
+              {code}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="config-row">
+        <label>引擎模式 (oem)</label>
+        <select value={params.oem} onChange={(e) => setParams({ oem: Number(e.target.value) })}>
+          {OEM_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="config-row">
+        <label>页面分割 (psm)</label>
+        <select value={params.psm} onChange={(e) => setParams({ psm: Number(e.target.value) })}>
+          {PSM_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="config-row">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={params.preserveSpaces}
+            onChange={(e) => setParams({ preserveSpaces: e.target.checked })}
+          />
+          保留词间空格
+        </label>
+      </div>
+
+      <div className="config-row">
+        <label>输出格式</label>
+        <div className="seg" style={{ display: 'flex', gap: 8 }}>
+          {(['txt', 'pdf'] as const).map((f) => (
+            <button
+              key={f}
+              className=""
+              style={{
+                background: params.outputFormat === f ? 'var(--accent-2)' : 'var(--panel-2)',
+                color: params.outputFormat === f ? '#04222f' : 'var(--text)',
+              }}
+              onClick={() => setParams({ outputFormat: f })}
+            >
+              {f === 'txt' ? '纯文本' : '可搜索 PDF'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn" disabled={pending || files.length === 0} onClick={() => runAll()}>
+          {pending ? '识别中…' : '识别全部'}
+        </button>
+        <button
+          className="btn danger"
+          disabled={!pending}
+          onClick={() => cancelAll()}
+          title="取消当前所有正在进行的识别"
+        >
+          取消全部
+        </button>
+      </div>
+    </div>
+  );
+}

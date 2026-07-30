@@ -1,5 +1,10 @@
 # Tesseract OCR
 
+> **本仓库说明**：本仓库基于上游 [tesseract-ocr/tesseract](https://github.com/tesseract-ocr/tesseract)，集成了**谷歌 / 百度 OCR 图形化工具**。
+> - 图形化工具入口：`ocr-tool/`（Vite + React 前端 + Node/Express 后端，后端调用仓库内已构建的 Tesseract 可执行文件）
+> - 工具文档：`docs/04_OCR工具_需求书.md`、`docs/05_OCR工具_架构设计与构建方案.md`、`docs/06_OCR工具_测试库.md`
+> - 在线仓库：<https://github.com/ht182400-creator/Tesseract-google-baidu-OCR>
+
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/tesseract-ocr/badge.svg)](https://scan.coverity.com/projects/tesseract-ocr)
 [![CodeQL](https://github.com/tesseract-ocr/tesseract/workflows/CodeQL/badge.svg)](https://github.com/tesseract-ocr/tesseract/security/code-scanning)
 [![OSS-Fuzz](https://img.shields.io/badge/oss--fuzz-fuzzing-brightgreen)](https://issues.oss-fuzz.com/issues?q=is:open%20title:tesseract-ocr)
