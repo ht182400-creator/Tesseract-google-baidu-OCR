@@ -5,12 +5,15 @@ export interface OcrParams {
   oem: number;
   psm: number;
   preserveSpaces: boolean;
-  outputFormat: 'txt' | 'pdf';
+  outputFormat: OutputFormat;
   /** 字符白名单（限定输出字符集），空字符串表示不限制 */
   whitelist: string;
   /** 图像预处理模式（仅前端生效，用于提升识别率） */
   preprocess: PreprocessMode;
 }
+
+/** 输出格式 */
+export type OutputFormat = 'txt' | 'pdf';
 
 /** 图像预处理模式 */
 export type PreprocessMode = 'none' | 'grayscale' | 'binarize' | 'enhance';

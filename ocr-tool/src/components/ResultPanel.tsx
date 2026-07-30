@@ -4,31 +4,52 @@ import type { FileItem, OcrLine } from '../types';
 /**
  * 从原图按包围盒裁剪出该文本行的小图（canvas），与识别文本并排展示，
  * 解决「识别结果排列混乱、不知道对应原图哪一段」的问题。
+ *
+ * 关键：缩略图最小高度兜底（表格行 height 可能仅 20px，算出 canvas h≈7px 不可见），
+ * 强制 h≥56px 让所有行都有清晰可读的缩略图；并主动兼容 cached image 不触发 onload 的情况。
  */
 function LineThumb({ src, box }: { src: string; box: OcrLine }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
     let cancelled = false;
     const img = new Image();
-    img.onload = () => {
+    const draw = () => {
       if (cancelled) return;
-      const c = ref.current;
-      const ctx = c?.getContext('2d');
-      if (!c || !ctx) return;
+      if (!img.naturalWidth) return; // 兜底：未加载完直接返回（让 onload 再来）
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
       const ratio = box.width / box.height || 1;
-      const w = Math.max(120, Math.min(360, box.width));
-      const h = w / ratio;
+      const MIN_H = 56; // 最小高度：避免矮行（表格行）算出 7px 看不见
+      let w = Math.max(120, Math.min(420, box.width));
+      let h = Math.max(MIN_H, Math.round(w / ratio));
+      // 若算出的 w 仍让 h 超过 220，按 h 反推 w（防超长行缩略图过高）
+      if (h > 220) {
+        h = 220;
+        w = Math.max(120, Math.round(h * ratio));
+      }
       c.width = Math.round(w);
       c.height = Math.round(h);
-      // 四周留一点边距，避免裁掉字符笔画
-      const pad = Math.round(Math.min(box.width, box.height) * 0.1);
+      const pad = Math.round(Math.min(box.width, box.height) * 0.08);
       const sx = Math.max(0, box.left - pad);
       const sy = Math.max(0, box.top - pad);
-      const sw = box.width + pad * 2;
-      const sh = box.height + pad * 2;
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      const sw = Math.min(img.naturalWidth - sx, box.width + pad * 2);
+      const sh = Math.min(img.naturalHeight - sy, box.height + pad * 2);
+      try {
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      } catch (e) {
+        // drawImage 偶发（参数越界/tainted）不致命，画占位底色便于发现
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, c.width, c.height);
+      }
     };
+    img.onload = draw;
     img.src = src;
+    // 关键：cached image 设 src 后 .complete 立即 true，但 onload 异步/可能不触发，
+    // 这里在设 src 之前绑 onload，再立刻检查 complete 同步触发一次绘制。
+    if (img.complete) draw();
     return () => {
       cancelled = true;
     };
@@ -151,8 +172,10 @@ export function ResultPanel({
           ) : (
             lines.map((line, i) => (
               <div className="loc-card" key={i}>
-                <div className="loc-idx">{i + 1}</div>
-                <div className="loc-thumb-wrap">{previewUrl && <LineThumb src={previewUrl} box={line} />}</div>
+                <div className="loc-card-head">
+                  <div className="loc-idx">{i + 1}</div>
+                  <div className="loc-thumb-wrap">{previewUrl && <LineThumb src={previewUrl} box={line} />}</div>
+                </div>
                 <div className="loc-text">
                   <div className="loc-text-body">{line.text || '（空）'}</div>
                   <div className="loc-meta">

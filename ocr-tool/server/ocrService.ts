@@ -86,8 +86,10 @@ export function buildArgs(
     if (wl) args.push('-c', `tessedit_char_whitelist=${wl}`);
   }
   args.push('--tessdata-dir', tessdataDir);
+  // 注意：本机构建的 tesseract 会把裸的 `pdf` 当作「参数文件」去读取而报错
+  // （read_params_file: Can't open pdf），必须用 -c tessedit_create_pdf=1 显式开启。
   if (params.outputFormat === 'pdf') {
-    args.push('pdf');
+    args.push('-c', 'tessedit_create_pdf=1');
   }
   return args;
 }
@@ -242,9 +244,10 @@ export async function ocrImage(
   }
 
   const args = buildArgs(inputPath, outputBase, config.tessdataDir, params);
-  // 始终额外输出 tsv（含每个词/行的像素级包围盒），供前端位置对应视图使用；
-  // tesseract 支持多输出格式（如 `... txt tsv` 或 `... pdf tsv`）
-  args.push('tsv');
+  // 始终额外输出 txt（纯文本）与 tsv（位置对应）。
+  // 注意：本机构建的 tesseract 一旦用 -c 显式开启某个输出格式，默认的 txt 就不再生成，
+  // 因此必须同时显式开启 tessedit_create_txt=1，否则前端「纯文本」会为空。
+  args.push('-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1');
 
   return new Promise<PageResult>((resolve, reject) => {
     let settled = false;
@@ -297,12 +300,13 @@ export async function ocrImage(
         }
         try {
           const result: PageResult = { text: '' };
+          // 无论输出格式如何，纯文本始终需要：前端「纯文本」标签、位置对应之外的兜底都要用。
+          // 注意：本机构建用 -c tessedit_create_txt=1 已显式开启 txt 输出，故 .txt 始终生成。
+          const txtPath = `${outputBase}.txt`;
+          if (existsSync(txtPath)) result.text = readFileSync(txtPath, 'utf-8');
           if (params.outputFormat === 'pdf') {
             const pdfPath = `${outputBase}.pdf`;
             if (existsSync(pdfPath)) result.pdfUrl = pdfPath;
-          } else {
-            const txtPath = `${outputBase}.txt`;
-            if (existsSync(txtPath)) result.text = readFileSync(txtPath, 'utf-8');
           }
           // 解析 tsv（始终输出），失败不阻断主流程，仅降级为纯文本
           try {

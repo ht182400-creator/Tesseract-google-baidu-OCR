@@ -48,20 +48,28 @@ export default function App() {
       <Dropzone />
 
       <div className="layout">
-        <div className="col">
+        <div className="col col-files">
           <FileList />
         </div>
-        <div className="col">
+        <div className="col col-preview">
           <h3>预览</h3>
           <Preview file={file} page={selectedPage} />
         </div>
-        <div className="col">
-          <h3>配置</h3>
-          <ConfigPanel />
-          <h3 style={{ marginTop: 18 }}>识别结果</h3>
-          <ResultPanel file={file} page={selectedPage} onPage={setSelectedPage} />
-        </div>
       </div>
+
+      {/* 配置停靠栏：横跨屏幕中下部，左列=识别结果、右列=识别参数（参数横向平铺） */}
+      <section className="config-dock">
+        <div className="config-dock-inner">
+          <div className="dock-result">
+            <h3>识别结果</h3>
+            <ResultPanel file={file} page={selectedPage} onPage={setSelectedPage} />
+          </div>
+          <div className="dock-params">
+            <h3 className="dock-title">识别参数</h3>
+            <ConfigPanel />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

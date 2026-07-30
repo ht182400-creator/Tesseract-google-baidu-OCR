@@ -1,6 +1,6 @@
 {
   "name": "ocr-tool",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "description": "Tesseract OCR 图形化工具（Web 版）：拖入图片/PDF，浏览器预览，一键识别并导出",

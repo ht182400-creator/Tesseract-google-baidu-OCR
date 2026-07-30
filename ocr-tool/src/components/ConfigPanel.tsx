@@ -1,41 +1,52 @@
 import { useStore } from '../store';
-import type { PreprocessMode } from '../types';
-
-const OEM_OPTIONS = [
-  { value: 1, label: '1 - 仅 LSTM（推荐）' },
-  { value: 0, label: '0 - 传统引擎' },
-  { value: 2, label: '2 - LSTM + 传统' },
-  { value: 3, label: '3 - 默认' },
-];
-
-/** 页面分割模式（PSM）全部取值 0-13：选错是识别率低的主因之一 */
-const PSM_OPTIONS = [
-  { value: 0, label: '0 - 仅定向/脚本检测（OSD）' },
-  { value: 1, label: '1 - 带 OSD 自动分割' },
-  { value: 2, label: '2 - 自动分割（无 OSD）' },
-  { value: 3, label: '3 - 全自动（默认）' },
-  { value: 4, label: '4 - 单列可变大小' },
-  { value: 5, label: '5 - 垂直单列' },
-  { value: 6, label: '6 - 整页统一块' },
-  { value: 7, label: '7 - 单行文本' },
-  { value: 8, label: '8 - 单个词' },
-  { value: 9, label: '9 - 单字符（验证码/车牌）' },
-  { value: 10, label: '10 - 单个词（环形）' },
-  { value: 11, label: '11 - 稀疏文本/无版面' },
-  { value: 12, label: '12 - 稀疏文本+方向' },
-  { value: 13, label: '13 - 原始行（无分割）' },
-];
-
-/** 图像预处理模式（仅前端生效）：改善低对比度/彩色背景/拍照件的识别率 */
-const PREPROCESS_OPTIONS: { value: PreprocessMode; label: string }[] = [
-  { value: 'none', label: 'none - 原图直传' },
-  { value: 'grayscale', label: 'grayscale - 灰度化' },
-  { value: 'binarize', label: 'binarize - 二值化（Otsu）' },
-  { value: 'enhance', label: 'enhance - 对比度拉伸' },
-];
+import type { PreprocessMode, OutputFormat } from '../types';
+import {
+  OEM_OPTIONS,
+  PSM_OPTIONS,
+  PREPROCESS_OPTIONS,
+  OUTPUT_OPTIONS,
+  LANG_INFO,
+  type OptionInfo,
+} from '../options';
 
 /**
- * 配置面板：语言多选、oem/psm、保留空格、输出格式，以及「识别全部」按钮。
+ * 通用单选卡片组：每个选项是一个带「标签 + 详细解释」的可点卡片，选中高亮。
+ * 用单选卡片替代下拉框，让所有选项与解释一眼可见。
+ */
+function RadioCards<T extends string | number>({
+  name,
+  value,
+  options,
+  onChange,
+}: {
+  name: string;
+  value: T;
+  options: OptionInfo<T>[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="opt-list">
+      {options.map((o) => (
+        <label key={String(o.value)} className={`opt-card${value === o.value ? ' on' : ''}`}>
+          <input
+            type="radio"
+            name={name}
+            checked={value === o.value}
+            onChange={() => onChange(o.value)}
+          />
+          <span className="opt-body">
+            <span className="opt-label">{o.label}</span>
+            <span className="opt-desc">{o.desc}</span>
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 配置面板：语言多选（勾选芯片）、oem/psm/预处理/输出格式（单选卡片 + 解释）、
+ * 字符白名单、保留空格（勾选卡片）与「识别全部」按钮。
  */
 export function ConfigPanel() {
   const params = useStore((s) => s.params);
@@ -54,39 +65,70 @@ export function ConfigPanel() {
   };
 
   return (
-    <div>
+    <div className="config-panel">
       <div className="config-row">
-        <label>语言（可多选）</label>
+        <label>语言（可多选，点击勾选）</label>
         <div className="lang-grid">
           {languages.length === 0 && <span className="empty-hint">加载语言列表中…</span>}
-          {languages.map((code) => (
-            <span
-              key={code}
-              className={`lang-chip${params.languages.includes(code) ? ' on' : ''}`}
-              onClick={() => toggleLang(code)}
-            >
-              {code}
-            </span>
-          ))}
+          {languages.map((code) => {
+            const info = LANG_INFO[code] ?? { name: code };
+            const on = params.languages.includes(code);
+            return (
+              <span
+                key={code}
+                className={`lang-chip${on ? ' on' : ''}`}
+                title={info.desc ?? info.name}
+                onClick={() => toggleLang(code)}
+              >
+                <b>{code}</b>
+                <span className="lang-name">{info.name}</span>
+              </span>
+            );
+          })}
         </div>
+        <div className="hint">可同时勾选多种语言（如 chi_sim+eng）；osd 仅用于方向检测，需配合 PSM 0/1。</div>
       </div>
 
-      <div className="config-row">
-        <label>引擎模式 (oem)</label>
-        <select value={params.oem} onChange={(e) => setParams({ oem: Number(e.target.value) })}>
-          {OEM_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
+      <div className="config-grid">
+        <div className="config-cell">
+          <label>引擎模式 (oem)</label>
+          <RadioCards
+            name="oem"
+            value={params.oem}
+            options={OEM_OPTIONS}
+            onChange={(v) => setParams({ oem: v })}
+          />
+        </div>
 
-      <div className="config-row">
-        <label>页面分割 (psm)</label>
-        <select value={params.psm} onChange={(e) => setParams({ psm: Number(e.target.value) })}>
-          {PSM_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        <div className="config-cell config-cell-wide">
+          <label>页面分割 (psm)</label>
+          <RadioCards
+            name="psm"
+            value={params.psm}
+            options={PSM_OPTIONS}
+            onChange={(v) => setParams({ psm: v })}
+          />
+        </div>
+
+        <div className="config-cell">
+          <label>图像预处理</label>
+          <RadioCards
+            name="pre"
+            value={params.preprocess}
+            options={PREPROCESS_OPTIONS}
+            onChange={(v) => setParams({ preprocess: v as PreprocessMode })}
+          />
+        </div>
+
+        <div className="config-cell">
+          <label>输出格式</label>
+          <RadioCards
+            name="out"
+            value={params.outputFormat}
+            options={OUTPUT_OPTIONS}
+            onChange={(v) => setParams({ outputFormat: v as OutputFormat })}
+          />
+        </div>
       </div>
 
       <div className="config-row">
@@ -98,53 +140,24 @@ export function ConfigPanel() {
           value={params.whitelist}
           onChange={(e) => setParams({ whitelist: e.target.value })}
         />
-        <div className="hint">限定输出字符集，发票号/车牌/验证码等场景可显著提升准确率</div>
+        <div className="hint">限定输出字符集，发票号/车牌/验证码等场景可显著提升准确率。</div>
       </div>
 
       <div className="config-row">
-        <label>图像预处理</label>
-        <select
-          value={params.preprocess}
-          onChange={(e) => setParams({ preprocess: e.target.value as PreprocessMode })}
-        >
-          {PREPROCESS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <div className="hint">低对比度/彩色背景/拍照件建议选 binarize 或 enhance</div>
-      </div>
-
-      <div className="config-row">
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label className={`opt-card chk-only${params.preserveSpaces ? ' on' : ''}`}>
           <input
             type="checkbox"
             checked={params.preserveSpaces}
             onChange={(e) => setParams({ preserveSpaces: e.target.checked })}
           />
-          保留词间空格
+          <span className="opt-body">
+            <span className="opt-label">保留词间空格</span>
+            <span className="opt-desc">开启后保留原文单词间的空格，适合含自然词距的文档（如英文）。</span>
+          </span>
         </label>
       </div>
 
-      <div className="config-row">
-        <label>输出格式</label>
-        <div className="seg" style={{ display: 'flex', gap: 8 }}>
-          {(['txt', 'pdf'] as const).map((f) => (
-            <button
-              key={f}
-              className=""
-              style={{
-                background: params.outputFormat === f ? 'var(--accent-2)' : 'var(--panel-2)',
-                color: params.outputFormat === f ? '#04222f' : 'var(--text)',
-              }}
-              onClick={() => setParams({ outputFormat: f })}
-            >
-              {f === 'txt' ? '纯文本' : '可搜索 PDF'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="config-actions">
         <button className="btn" disabled={pending || files.length === 0} onClick={() => runAll()}>
           {pending ? '识别中…' : '识别全部'}
         </button>

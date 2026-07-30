@@ -50,9 +50,12 @@ describe('buildArgs', () => {
     expect(a).toContain('preserve_interword_spaces=1');
   });
 
-  it('输出 pdf 时末参为 pdf', () => {
+  it('输出 pdf 时用 -c tessedit_create_pdf=1（本机构建不支持裸 pdf 参数）', () => {
     const a = buildArgs('/in.png', '/out', '/tess', { ...BASE, outputFormat: 'pdf' });
-    expect(a[a.length - 1]).toBe('pdf');
+    // 本机构建会把裸 `pdf` 当成参数文件读取报错，必须用 -c 显式开启
+    expect(a).toContain('-c');
+    expect(a).toContain('tessedit_create_pdf=1');
+    expect(a).not.toContain('pdf');
   });
 
   it('空语言抛错', () => {
