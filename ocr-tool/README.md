@@ -31,3 +31,11 @@
 - 类型检查：`npm run typecheck`
 - 全量测试（单元 + 集成 + E2E，生成带时间戳日志到 `tests/logs/`）：`scripts/test-all.bat`
 - 当前状态：单元 14 + 集成 5 + E2E 3 = **22/22 全绿**
+
+## 运行前配置（克隆仓库后必做）
+本工具依赖仓库内**已构建的 Tesseract 可执行文件**，但构建产物（`.sw/` 目录、`.exe`、`.dll`、`tessdata`）**已被 `.gitignore` 排除，不会进入 Git**。因此克隆他人仓库后，`ocr-tool/ocr-tool.config.json` 里的路径是**提交者的本地绝对路径**，你必须改成自己的：
+
+- `tesseractPath`：指向你本地构建出的 `tesseract.exe`（例如仓库内 `.sw/out/<构建号>/tesseract.exe`）
+- `tessdataDir`：指向语言包目录（例如 `tessdata_unittest/tessdata/`）
+
+若路径不正确，后端启动会报"找不到可执行文件 / 语言包"。请按本机实际路径修改该 JSON 后再启动。
