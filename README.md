@@ -5,6 +5,39 @@
 > - 工具文档：`docs/04_OCR工具_需求书.md`、`docs/05_OCR工具_架构设计与构建方案.md`、`docs/06_OCR工具_测试库.md`
 > - 在线仓库：<https://github.com/ht182400-creator/Tesseract-google-baidu-OCR>
 
+---
+
+## 本仓库日常开发与同步上游（必读）
+
+> 本仓库 `main` 历史基于上游 `tesseract-ocr/tesseract` 重建，**已保留共同祖先**，可正常同步上游更新。
+> remote 已统一为 **SSH 协议**（本机直连 GitHub HTTPS 443 不通，SSH 22 通且已配 key），无需配置代理。
+
+### 1. 日常开发（在 main 上直接改）
+```bash
+git checkout main                       # 确保在 main
+# ... 改代码 ...
+git add -A
+git commit -m "你的改动说明"
+git push origin main                    # 推到主仓库
+```
+
+### 2. 同步上游 tesseract 更新（上游有新提交时）
+```bash
+git fetch upstream                      # 拉 tesseract-ocr/tesseract 更新（走 SSH）
+git rebase upstream/main                # 把你的改造"接"到上游最新提交之上
+# 若冲突，主要在 src/ccstruct/image.h、src/svpaint.cpp、sw.cpp 三处，解完 git add 后 git rebase --continue
+git push origin main                    # 推到主仓库（因 rebase 改写了历史，需 --force-with-lease）
+git push --force-with-lease origin main
+```
+> 提示：rebase 改写历史后常规 push 会被拒，用 `--force-with-lease`（比 `-f` 安全）强制推送。
+
+### 3. 关键 remote 与分支约定
+- `origin`  = `git@github.com:ht182400-creator/Tesseract-google-baidu-OCR.git`（主仓库，**可 push**）
+- `upstream` = `git@github.com:tesseract-ocr/tesseract.git`（上游，**只读，绝不 push**，只 fetch）
+- 保留上游 `unittest/` 目录（利于未来同步上游测试改动）。
+
+---
+
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/tesseract-ocr/badge.svg)](https://scan.coverity.com/projects/tesseract-ocr)
 [![CodeQL](https://github.com/tesseract-ocr/tesseract/workflows/CodeQL/badge.svg)](https://github.com/tesseract-ocr/tesseract/security/code-scanning)
 [![OSS-Fuzz](https://img.shields.io/badge/oss--fuzz-fuzzing-brightgreen)](https://issues.oss-fuzz.com/issues?q=is:open%20title:tesseract-ocr)
